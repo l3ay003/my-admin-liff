@@ -34,11 +34,14 @@
             <button onclick="liff.logout(); location.reload();">Logout</button>
         </div>
 
-        <div id="user-ui">
-            <h1 style="color: #ff4b4b;">เข้าถึงไม่ได้ ❌</h1>
-            <p>บัญชีนี้ไม่มีสิทธิ์เป็นผู้ดูแลระบบ</p>
-            <button onclick="liff.logout(); location.reload();">ลองใช้บัญชีอื่น</button>
-        </div>
+<div id="user-ui">
+    <h1 style="color: #ff4b4b;">เข้าถึงไม่ได้ ❌</h1>
+    <p>บัญชีนี้ไม่มีสิทธิ์เป็นผู้ดูแลระบบ</p>
+    <p style="font-size: 12px; color: gray;">User ID ของคุณคือ:</p>
+    <code id="display-uid" style="background: #eee; padding: 5px; display: block; word-break: break-all;">กำลังดึง ID...</code>
+    <br>
+    <button onclick="liff.logout(); location.reload();">ลองใช้บัญชีอื่น</button>
+</div>
     </div>
 
     <script>
@@ -68,8 +71,10 @@
                     if (data.success && data.isAdmin) {
                         document.getElementById('admin-name').innerText = "สวัสดีคุณ " + data.displayName;
                         showUI('admin-ui');
-                    } else {
+                    } else {   
+                        document.getElementById('display-uid').innerText = liff.getDecodedIDToken().sub; 
                         showUI('user-ui');
+                        
                     }
                 })
                 .catch(err => {
@@ -87,5 +92,6 @@
 </body>
 
 </html>
+
 
 
