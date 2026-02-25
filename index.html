@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Verification</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; padding: 40px 20px; background: #f9f9f9; }
+        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; min-width: 280px; }
+        .btn-login { background: #00b900; color: white; border: none; padding: 12px 25px; border-radius: 25px; font-weight: bold; cursor: pointer; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #00b900; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #admin-ui, #user-ui, #login-ui { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div id="loading-ui">
+            <div class="loader"></div>
+            <p>กำลังโหลด...</p>
+        </div>
+
+        <div id="login-ui">
+            <h2>ยินดีต้อนรับ</h2>
+            <p>กรุณาเข้าสู่ระบบเพื่อดำเนินการต่อ</p>
+            <button class="btn-login" onclick="liff.login()">Log in with LINE</button>
+        </div>
+
+        <div id="admin-ui">
+            <h1 style="color: #00b900;">ยินดีต้อนรับ Admin ✅</h1>
+            <p id="admin-name"></p>
+            <button onclick="liff.logout(); location.reload();">Logout</button>
+        </div>
+
+        <div id="user-ui">
+            <h1 style="color: #ff4b4b;">เข้าถึงไม่ได้ ❌</h1>
+            <p>บัญชีนี้ไม่มีสิทธิ์เป็นผู้ดูแลระบบ</p>
+            <button onclick="liff.logout(); location.reload();">ลองใช้บัญชีอื่น</button>
+        </div>
+    </div>
+
+    <script>
+        const LIFF_ID = "2009201666-JexzIIEn"; 
+        const GAS_API_URL = "ใส่_URL_ที่ได้จาก_APPS_SCRIPT_ตรงนี้/exec"; 
+
+        async function main() {
+            try {
+                await liff.init({ liffId: LIFF_ID });
+                
+                if (!liff.isLoggedIn()) {
+                    showUI('login-ui');
+                } else {
+                    const idToken = liff.getIDToken();
+                    verifyWithServer(idToken);
+                }
+            } catch (err) {
+                alert("LIFF Error: " + err.message);
+            }
+        }
+
+        function verifyWithServer(token) {
+            // ยิงไปหา GAS API ตรงๆ โดยไม่ผ่าน Iframe
+            fetch(`${GAS_API_URL}?idToken=${token}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.isAdmin) {
+                        document.getElementById('admin-name').innerText = "สวัสดีคุณ " + data.displayName;
+                        showUI('admin-ui');
+                    } else {
+                        showUI('user-ui');
+                    }
+                })
+                .catch(err => {
+                    alert("API Error: " + err.message);
+                });
+        }
+
+        function showUI(id) {
+            document.getElementById('loading-ui').style.display = 'none';
+            document.getElementById(id).style.display = 'block';
+        }
+
+        main();
+    </script>
+</body>
+</html>
