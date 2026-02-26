@@ -100,141 +100,80 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-const LIFF_ID = "2009201666-JexzIIEn"; 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbyVmkVoJnDEr1gTDCFazu8wQzKV58wMewwxnmEwAeO-sgkCYpZQ74nRwGvIgNcsZmhJFw/exec"; 
+const LIFF_ID = "2009201666-JexzIIEn";
+let currentUser = {};
 
-let userData = {};
-
-// 1. เริ่มต้นระบบ LIFF
 async function main() {
-    try {
-        await liff.init({ liffId: LIFF_ID });
-        if (!liff.isLoggedIn()) {
-            liff.login();
-        } else {
-            getUserStatus();
-        }
-    } catch (err) {
-        console.error("LIFF Initialization failed", err);
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) { liff.login(); }
+    else {
+        // เรียกเช็ค User ผ่าน google.script.run (มาตรฐาน GAS)
+        google.script.run.withSuccessHandler(user => {
+            currentUser = user;
+            document.getElementById('userNameDisplay').innerText = user.name;
+            document.getElementById('userImg').src = user.picture;
+            loadData();
+        }).apiHandler('checkUser', { idToken: liff.getIDToken() });
     }
 }
 
-// 2. ตรวจสอบสิทธิ์และข้อมูลผู้ใช้จาก GAS
-function getUserStatus() {
-    const idToken = liff.getIDToken();
-    fetch(`${GAS_URL}?action=checkUser&idToken=${idToken}`)
-        .then(res => res.json())
-        .then(data => {
-            userData = data;
-            document.getElementById('userImg').src = data.picture;
-            document.getElementById('userNameDisplay').innerText = data.name;
-            
-            // แสดงผลตาม Role
-            if (data.role === 'Admin') {
-                document.getElementById('adminStats').classList.remove('d-none');
-            }
-            
-            loadInitialData();
-        });
+function loadData() {
+    google.script.run.withSuccessHandler(data => {
+        // 1. ใส่ตัวเลือกทะเบียนรถ
+        const carSelect = document.getElementById('carPlate');
+        carSelect.innerHTML = data.cars.map(c => `<option value="${c}">${c}</option>`).join('');
+        
+        // 2. จัดการหน้า Admin Stats
+        if (currentUser.role === 'Admin') {
+            document.getElementById('adminStats').classList.remove('d-none');
+            document.getElementById('countPending').innerText = data.requests.filter(r => r.Status === 'รอดำเนินการ').length;
+        }
+
+        // 3. แสดงรายการ
+        renderList(data.requests);
+    }).apiHandler('getInitialData', { userId: currentUser.userId, role: currentUser.role });
 }
 
-// 3. โหลดข้อมูลทะเบียนรถและรายการแจ้งซ่อม
-function loadInitialData() {
-    fetch(`${GAS_URL}?action=getInitialData&userId=${userData.userId}&role=${userData.role}`)
-        .then(res => res.json())
-        .then(data => {
-            // ใส่ข้อมูลทะเบียนรถใน Select
-            const carSelect = document.getElementById('carPlate');
-            carSelect.innerHTML = '<option value="">เลือกทะเบียนรถ</option>';
-            data.cars.forEach(car => {
-                if(car[0]) carSelect.innerHTML += `<option value="${car[0]}">${car[0]}</option>`;
-            });
-
-            // แสดงสถิติ (ถ้าเป็น Admin)
-            if (userData.role === 'Admin') {
-                updateAdminStats(data.myRequests);
-            }
-
-            renderRepairList(data.myRequests);
-        });
-}
-
-// 4. แสดงรายการแจ้งซ่อมในหน้าจอ
-function renderRepairList(requests) {
-    const listDiv = document.getElementById('repairList');
-    if (requests.length === 0) {
-        listDiv.innerHTML = '<div class="p-5 text-center text-muted">ไม่พบข้อมูลการแจ้งซ่อม</div>';
+function renderList(list) {
+    const container = document.getElementById('repairList');
+    if (list.length === 0) {
+        container.innerHTML = '<div class="p-5 text-center">ไม่มีข้อมูล</div>';
         return;
     }
-
-    listDiv.innerHTML = requests.map(item => `
+    container.innerHTML = list.map(item => `
         <div class="list-group-item p-3">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <h6 class="mb-1 fw-bold">${item.plate}</h6>
-                    <small class="text-muted">อาการ: ${item.details}</small><br>
-                    <small class="text-muted">ผู้แจ้ง: ${item.userName}</small>
-                </div>
-                <span class="status-badge ${getStatusClass(item.status)}">${item.status}</span>
+            <div class="d-flex justify-content-between">
+                <b>${item.PlateNumber}</b>
+                <span class="badge bg-success">${item.Status}</span>
             </div>
-            ${item.remark ? `<div class="mt-2 small text-danger"><b>หมายเหตุ:</b> ${item.remark}</div>` : ''}
-            <div class="mt-2 d-flex justify-content-between align-items-center">
-                <small class="text-muted"><i class="bi bi-clock"></i> ${new Date(item.timestamp).toLocaleDateString('th-TH')}</small>
-                ${userData.role === 'Admin' ? `<button class="btn btn-sm btn-outline-primary" onclick="manageTask('${item.jobId}')">จัดการ</button>` : ''}
-            </div>
+            <small>${item.Details}</small><br>
+            <small class="text-muted">${new Date(item.Timestamp).toLocaleString('th-TH')}</small>
         </div>
     `).join('');
 }
 
-// ฟังก์ชันเสริม: เปลี่ยนสีตามสถานะ
-function getStatusClass(status) {
-    switch(status) {
-        case 'รอดำเนินการ': return 'bg-warning text-dark';
-        case 'กำลังซ่อม': return 'bg-primary text-white';
-        case 'เสร็จสิ้น': return 'bg-success text-white';
-        case 'ส่งกลับแก้ไข': return 'bg-danger text-white';
-        default: return 'bg-secondary text-white';
-    }
-}
-
-// 5. ส่งข้อมูลแจ้งซ่อมใหม่
-document.getElementById('repairForm').addEventListener('submit', function(e) {
+// ฟังก์ชันกดส่งฟอร์ม (จะทำงานเมื่อกดปุ่ม Submit เท่านั้น)
+document.getElementById('repairForm').onsubmit = function(e) {
     e.preventDefault();
-    const btn = e.target.querySelector('button');
-    btn.disabled = true;
-    btn.innerText = "กำลังส่งข้อมูล...";
-
     const payload = {
-        action: 'submitRepair',
-        userId: userData.userId,
-        userName: userData.name, // ชื่อจริงจาก Sheet ที่ GAS ส่งมาให้
+        userId: currentUser.userId,
+        userName: currentUser.name,
         plate: document.getElementById('carPlate').value,
         mileage: document.getElementById('mileage').value,
         details: document.getElementById('details').value,
         cost: document.getElementById('estCost').value,
         location: document.getElementById('location').value
     };
-
-    fetch(GAS_URL, {
-        method: 'POST',
-        body: JSON.stringify(payload)
-    })
-    .then(res => res.json())
-    .then(res => {
-        if(res.success) {
-            alert('ส่งข้อมูลแจ้งซ่อมเรียบร้อยแล้ว');
-            location.reload();
-        }
-    });
-});
-
-// ฟังก์ชันเปิด Modal
-function showRepairModal() {
-    new bootstrap.Modal(document.getElementById('repairModal')).show();
-}
+    
+    google.script.run.withSuccessHandler(() => {
+        alert("บันทึกสำเร็จ!");
+        location.reload();
+    }).apiHandler('submitRepair', payload);
+};
 
 main();
 </script>
 </body>
 </html>
+
 
