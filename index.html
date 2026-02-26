@@ -7,92 +7,58 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
-        :root { --gov-green: #2E7D32; --gov-light: #E8F5E9; }
-        body { background-color: #f8f9fa; font-family: 'Sarabun', sans-serif; }
-        .navbar { background-color: var(--gov-green) !important; color: white; }
-        .card-header { background-color: var(--gov-green); color: white; font-weight: bold; }
-        .btn-gov { background-color: var(--gov-green); color: white; }
-        .btn-gov:hover { background-color: #1b5e20; color: white; }
-        .status-badge { font-size: 0.8rem; padding: 5px 10px; border-radius: 20px; }
-        .floating-btn { position: fixed; bottom: 20px; right: 20px; border-radius: 50%; width: 60px; height: 60px; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        :root { --main: #2E7D32; --bg: #f8f9fa; }
+        body { background: var(--bg); font-family: 'Sarabun', sans-serif; }
+        .navbar { background: var(--main); color: white; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); transition: 0.3s; }
+        .btn-main { background: var(--main); color: white; border-radius: 10px; }
+        .btn-main:hover { background: #1b5e20; color: white; }
+        .status-badge { font-size: 0.75rem; padding: 4px 12px; border-radius: 20px; font-weight: bold; }
+        .loader { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index:9999; display:flex; justify-content:center; align-items:center; }
     </style>
 </head>
 <body>
 
-<nav class="navbar navbar-dark mb-4">
+<div id="loading" class="loader"><div class="spinner-border text-success"></div></div>
+
+<nav class="navbar sticky-top mb-3 shadow-sm">
     <div class="container">
-        <span class="navbar-brand"><i class="bi bi-truck-flatbed"></i> ระบบแจ้งซ่อมรถยนต์</span>
-        <div id="userProfile" class="d-flex align-items-center text-white">
-            <img id="userImg" src="" width="35" class="rounded-circle me-2">
-            <small id="userNameDisplay"></small>
+        <span class="navbar-brand fw-bold mb-0"><i class="bi bi-car-front-fill"></i> ระบบแจ้งซ่อม</span>
+        <div id="profile" class="d-flex align-items-center">
+            <img id="uImg" src="" width="32" height="32" class="rounded-circle border me-2">
+            <small id="uName" class="text-white fw-bold"></small>
         </div>
     </div>
 </nav>
 
 <div class="container pb-5">
-    <div id="adminStats" class="row g-3 mb-4 d-none">
-        <div class="col-6 col-md-3">
-            <div class="card text-center p-3 border-0 shadow-sm">
-                <h3 class="text-warning" id="countPending">0</h3>
-                <small>รอดำเนินการ</small>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="card text-center p-3 border-0 shadow-sm">
-                <h3 class="text-primary" id="countFixing">0</h3>
-                <small>กำลังซ่อม</small>
-            </div>
-        </div>
-        </div>
-
-    <div class="card border-0 shadow-sm">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <span>รายการแจ้งซ่อมของท่าน</span>
-            <button class="btn btn-sm btn-light" onclick="showRepairModal()"><i class="bi bi-plus-lg"></i> แจ้งซ่อม</button>
-        </div>
-        <div class="card-body p-0">
-            <div id="repairList" class="list-group list-group-flush">
-                <div class="p-5 text-center text-muted">กำลังโหลดข้อมูล...</div>
-            </div>
-        </div>
+    <div id="adminStats" class="row g-2 mb-3 d-none">
+        <div class="col-4"><div class="card p-2 text-center text-warning"><b><span id="s1">0</span></b><br><small>รอดำเนินการ</small></div></div>
+        <div class="col-4"><div class="card p-2 text-center text-primary"><b><span id="s2">0</span></b><br><small>กำลังซ่อม</small></div></div>
+        <div class="col-4"><div class="card p-2 text-center text-success"><b><span id="s3">0</span></b><br><small>เสร็จสิ้น</small></div></div>
     </div>
+
+    <div class="d-grid mb-4">
+        <button class="btn btn-main py-2 fw-bold shadow-sm" onclick="openModal()"><i class="bi bi-plus-circle"></i> แจ้งซ่อมรถยนต์ใหม่</button>
+    </div>
+
+    <h6 class="fw-bold mb-3">ประวัติการแจ้งซ่อม</h6>
+    <div id="list"></div>
 </div>
 
-<div class="modal fade" id="repairModal" tabindex="-1">
-    <div class="modal-dialog modal-fullscreen-sm-down">
-        <div class="modal-content">
-            <form id="repairForm">
-                <div class="modal-header">
-                    <h5 class="modal-title">ข้อมูลการแจ้งซ่อม</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">เลขทะเบียนรถ</label>
-                        <select class="form-select" id="carPlate" required></select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">เลขไมล์ (กม.)</label>
-                        <input type="number" class="form-control" id="mileage" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">รายละเอียดอาการเสีย</label>
-                        <textarea class="form-control" id="details" rows="3" required></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">ประเมินค่าใช้จ่าย (บาท)</label>
-                        <input type="number" class="form-control" id="estCost">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">สถานที่ซ่อม</label>
-                        <input type="text" class="form-control" id="location">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-gov w-100">ส่งแจ้งซ่อมรถยนต์</button>
-                </div>
-            </form>
-        </div>
+<div class="modal fade" id="formModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form id="repairForm" class="modal-content">
+            <div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold">บันทึกข้อมูลแจ้งซ่อม</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-3"><label class="form-label small fw-bold">เลขทะเบียนรถ</label><select id="plate" class="form-select" required></select></div>
+                <div class="mb-3"><label class="form-label small fw-bold">เลขไมล์ (กม.)</label><input type="number" id="mileage" class="form-control" required></div>
+                <div class="mb-3"><label class="form-label small fw-bold">รายละเอียดอาการเสีย</label><textarea id="details" class="form-control" rows="3" required></textarea></div>
+                <div class="mb-3"><label class="form-label small fw-bold">ประเมินค่าใช้จ่าย</label><input type="number" id="cost" class="form-control"></div>
+                <div class="mb-3"><label class="form-label small fw-bold">สถานที่ซ่อม</label><input type="text" id="loc" class="form-control"></div>
+            </div>
+            <div class="modal-footer border-0"><button type="submit" id="btnSubmit" class="btn btn-main w-100 py-2 fw-bold">ส่งข้อมูล</button></div>
+        </form>
     </div>
 </div>
 
@@ -100,80 +66,108 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-const LIFF_ID = "2009201666-JexzIIEn";
-let currentUser = {};
+    const LIFF_ID = "2009201666-JexzIIEn";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyVmkVoJnDEr1gTDCFazu8wQzKV58wMewwxnmEwAeO-sgkCYpZQ74nRwGvIgNcsZmhJFw/exec"; // ต้องลงท้ายด้วย /exec
+    let user = {};
 
-async function main() {
-    await liff.init({ liffId: LIFF_ID });
-    if (!liff.isLoggedIn()) { liff.login(); }
-    else {
-        // เรียกเช็ค User ผ่าน google.script.run (มาตรฐาน GAS)
-        google.script.run.withSuccessHandler(user => {
-            currentUser = user;
-            document.getElementById('userNameDisplay').innerText = user.name;
-            document.getElementById('userImg').src = user.picture;
+    async function callApi(action, payload) {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: action, payload: payload })
+        });
+        return await res.json();
+    }
+
+    async function main() {
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isLoggedIn()) { liff.login(); }
+        else {
+            const data = await callApi('checkUser', { idToken: liff.getIDToken() });
+            user = data;
+            document.getElementById('uName').innerText = data.name;
+            document.getElementById('uImg').src = data.picture;
+            document.getElementById('loading').style.display = 'none';
             loadData();
-        }).apiHandler('checkUser', { idToken: liff.getIDToken() });
-    }
-}
-
-function loadData() {
-    google.script.run.withSuccessHandler(data => {
-        // 1. ใส่ตัวเลือกทะเบียนรถ
-        const carSelect = document.getElementById('carPlate');
-        carSelect.innerHTML = data.cars.map(c => `<option value="${c}">${c}</option>`).join('');
-        
-        // 2. จัดการหน้า Admin Stats
-        if (currentUser.role === 'Admin') {
-            document.getElementById('adminStats').classList.remove('d-none');
-            document.getElementById('countPending').innerText = data.requests.filter(r => r.Status === 'รอดำเนินการ').length;
         }
-
-        // 3. แสดงรายการ
-        renderList(data.requests);
-    }).apiHandler('getInitialData', { userId: currentUser.userId, role: currentUser.role });
-}
-
-function renderList(list) {
-    const container = document.getElementById('repairList');
-    if (list.length === 0) {
-        container.innerHTML = '<div class="p-5 text-center">ไม่มีข้อมูล</div>';
-        return;
     }
-    container.innerHTML = list.map(item => `
-        <div class="list-group-item p-3">
-            <div class="d-flex justify-content-between">
-                <b>${item.PlateNumber}</b>
-                <span class="badge bg-success">${item.Status}</span>
+
+    async function loadData() {
+        const data = await callApi('getInitialData', { userId: user.userId, role: user.role });
+        document.getElementById('plate').innerHTML = data.cars.map(c => `<option value="${c}">${c}</option>`).join('');
+        
+        if (user.role === 'Admin') {
+            document.getElementById('adminStats').classList.remove('d-none');
+            document.getElementById('s1').innerText = data.requests.filter(r => r.Status === 'รอดำเนินการ').length;
+            document.getElementById('s2').innerText = data.requests.filter(r => r.Status === 'กำลังซ่อม').length;
+            document.getElementById('s3').innerText = data.requests.filter(r => r.Status === 'เสร็จสิ้น').length;
+        }
+        renderList(data.requests);
+    }
+
+    function renderList(arr) {
+        const container = document.getElementById('list');
+        if (arr.length === 0) { container.innerHTML = '<div class="text-center p-5 text-muted small">ไม่พบข้อมูล</div>'; return; }
+        
+        container.innerHTML = arr.map(r => `
+            <div class="card p-3 mb-2">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div><span class="fw-bold">${r.PlateNumber}</span><br><small class="text-muted">${new Date(r.Timestamp).toLocaleString('th-TH')}</small></div>
+                    <span class="status-badge ${getStatusColor(r.Status)}">${r.Status}</span>
+                </div>
+                <div class="small bg-light p-2 rounded mb-2">${r.Details}</div>
+                ${user.role === 'Admin' ? `
+                    <div class="border-top pt-2">
+                        <select onchange="updateStatus('${r.JobID}', this.value)" class="form-select form-select-sm">
+                            <option value="">เปลี่ยนสถานะ...</option>
+                            <option value="กำลังซ่อม">กำลังซ่อม</option>
+                            <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+                            <option value="ส่งกลับแก้ไข">ส่งกลับแก้ไข</option>
+                        </select>
+                    </div>
+                ` : ''}
+                ${r.AdminRemark ? `<div class="small text-danger mt-2"><b>หมายเหตุ:</b> ${r.AdminRemark}</div>` : ''}
             </div>
-            <small>${item.Details}</small><br>
-            <small class="text-muted">${new Date(item.Timestamp).toLocaleString('th-TH')}</small>
-        </div>
-    `).join('');
-}
+        `).join('');
+    }
 
-// ฟังก์ชันกดส่งฟอร์ม (จะทำงานเมื่อกดปุ่ม Submit เท่านั้น)
-document.getElementById('repairForm').onsubmit = function(e) {
-    e.preventDefault();
-    const payload = {
-        userId: currentUser.userId,
-        userName: currentUser.name,
-        plate: document.getElementById('carPlate').value,
-        mileage: document.getElementById('mileage').value,
-        details: document.getElementById('details').value,
-        cost: document.getElementById('estCost').value,
-        location: document.getElementById('location').value
-    };
-    
-    google.script.run.withSuccessHandler(() => {
-        alert("บันทึกสำเร็จ!");
+    function getStatusColor(s) {
+        if(s === 'รอดำเนินการ') return 'bg-warning text-dark';
+        if(s === 'กำลังซ่อม') return 'bg-primary text-white';
+        if(s === 'เสร็จสิ้น') return 'bg-success text-white';
+        if(s === 'ส่งกลับแก้ไข') return 'bg-danger text-white';
+        return 'bg-secondary text-white';
+    }
+
+    async function updateStatus(id, st) {
+        if(!st) return;
+        let remark = (st === "ส่งกลับแก้ไข") ? prompt("ระบุหมายเหตุ:") : "";
+        let actual = (st === "เสร็จสิ้น") ? prompt("ระบุค่าใช้จ่ายจริง:") : "";
+        document.getElementById('loading').style.display = 'flex';
+        await callApi('updateStatus', { jobId: id, status: st, remark: remark, actualCost: actual });
+        loadData();
+        document.getElementById('loading').style.display = 'none';
+    }
+
+    document.getElementById('repairForm').onsubmit = async function(e) {
+        e.preventDefault();
+        document.getElementById('btnSubmit').disabled = true;
+        document.getElementById('loading').style.display = 'flex';
+        const payload = {
+            userId: user.userId, userName: user.name,
+            plate: document.getElementById('plate').value,
+            mileage: document.getElementById('mileage').value,
+            details: document.getElementById('details').value,
+            cost: document.getElementById('cost').value,
+            location: document.getElementById('loc').value
+        };
+        await callApi('submitRepair', payload);
+        alert("ส่งข้อมูลสำเร็จ!");
         location.reload();
-    }).apiHandler('submitRepair', payload);
-};
+    };
 
-main();
+    function openModal() { new bootstrap.Modal(document.getElementById('formModal')).show(); }
+
+    main();
 </script>
 </body>
 </html>
-
-
